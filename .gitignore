@@ -1,0 +1,23 @@
+# Build output
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+
+# Packaged app artifacts
+*.apk
+*.aab
+*.ipa
+
+# AI coding tool skill mirrors (installed/synced, not project source)
+.claude/
+.agents/
+.aider-desk/
+
+# OS cruft
+.DS_Store
+Thumbs.db

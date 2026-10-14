@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DrGymGirly.ExercisePickerPage"
+             Title="Choose Exercise">
+
+    <Grid Padding="24" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
+        <Label Text="Choose Exercise" Style="{StaticResource PageTitle}" />
+
+        <SearchBar Grid.Row="1" x:Name="SearchBox" Placeholder="Search exercises..." TextChanged="OnSearchTextChanged" Margin="0,8,0,0" />
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+            <Label Text="{Binding FilterHint}" Style="{StaticResource MutedLabel}" FontSize="11" VerticalOptions="Center" />
+            <Button Grid.Column="1" x:Name="ShowAllButton" Clicked="OnToggleShowAllClicked" Style="{StaticResource TintedPillButton}" />
+        </Grid>
+
+        <CollectionView Grid.Row="3" ItemsSource="{Binding FilteredExercises}" Margin="0,8,0,0">
+            <CollectionView.EmptyView>
+                <Label Text="No matching exercises." HorizontalOptions="Center" Margin="0,40" Style="{StaticResource MutedLabel}" />
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource CardBorder}">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnExerciseTapped" CommandParameter="{Binding .}" />
+                        </Border.GestureRecognizers>
+                        <VerticalStackLayout>
+                            <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="14" />
+                            <Label Text="{Binding Category}" Style="{StaticResource MutedLabel}" FontSize="11" Margin="0,2,0,0" />
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DrGymGirly.EditDayTypeExercisesPage"
+             Title="Edit Day Exercises">
+
+    <Grid Padding="24" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="12">
+        <Label Text="{Binding Heading}" Style="{StaticResource PageTitle}" />
+        <Label Grid.Row="1" Text="Exercises for this day type:" FontAttributes="Bold" Margin="0,8,0,0" />
+
+        <CollectionView Grid.Row="2" ItemsSource="{Binding DraftExercises}">
+            <CollectionView.EmptyView>
+                <Label Text="No exercises added yet." HorizontalOptions="Center" Margin="0,30" Style="{StaticResource MutedLabel}" />
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <SwipeView>
+                        <SwipeView.LeftItems>
+                            <SwipeItems>
+                                <SwipeItem Text="Remove" BackgroundColor="{StaticResource Danger}" Invoked="OnRemoveExerciseInvoked" CommandParameter="{Binding .}" />
+                            </SwipeItems>
+                        </SwipeView.LeftItems>
+                        <Border Style="{StaticResource CardBorder}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Text="{Binding ExerciseName}" FontAttributes="Bold" FontSize="14" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="{Binding TargetsDisplay}" Style="{StaticResource AccentLabel}" VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
+                    </SwipeView>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <HorizontalStackLayout Grid.Row="3" HorizontalOptions="Center" Spacing="12" Margin="0,12,0,0">
+            <Button Text="+ Add Exercise" Clicked="OnAddExerciseClicked" Style="{StaticResource SecondaryButton}" />
+            <Button Text="Save" Clicked="OnSaveClicked" FontAttributes="Bold" />
+        </HorizontalStackLayout>
+    </Grid>
+</ContentPage>

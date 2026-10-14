@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#FF6B47</color>
+    <!-- Matches PageCanvasDark in Resources/Styles/Colors.xaml so the status
+         bar reads as part of the same dark canvas rather than a separate bar. -->
+    <color name="colorPrimaryDark">#1C130D</color>
+    <color name="colorAccent">#FFC266</color>
+</resources>

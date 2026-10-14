@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DrGymGirly.EditSchedulePage"
+             Title="Weekly Schedule">
+
+    <ContentPage.Resources>
+        <!-- Order must match the DayType enum exactly - EditSchedulePage.xaml.cs
+             maps Picker.SelectedIndex straight onto the enum's numeric value. -->
+        <x:Array x:Key="DayTypeOptions" Type="{x:Type x:String}">
+            <x:String>Rest</x:String>
+            <x:String>Pull</x:String>
+            <x:String>Push</x:String>
+            <x:String>Legs</x:String>
+            <x:String>Upper</x:String>
+            <x:String>Lower</x:String>
+        </x:Array>
+    </ContentPage.Resources>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="12">
+            <Label Text="Weekly Schedule" Style="{StaticResource PageTitle}" />
+            <Label Text="Assign a day type to each day of the week." Style="{StaticResource MutedLabel}" Margin="0,0,0,8" />
+
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Text="Monday" VerticalOptions="Center" />
+                <Picker Grid.Column="1" x:Name="MondayPicker" ItemsSource="{StaticResource DayTypeOptions}" WidthRequest="120" />
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Text="Tuesday" VerticalOptions="Center" />
+                <Picker Grid.Column="1" x:Name="TuesdayPicker" ItemsSource="{StaticResource DayTypeOptions}" WidthRequest="120" />
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Text="Wednesday" VerticalOptions="Center" />
+                <Picker Grid.Column="1" x:Name="WednesdayPicker" ItemsSource="{StaticResource DayTypeOptions}" WidthRequest="120" />
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Text="Thursday" VerticalOptions="Center" />
+                <Picker Grid.Column="1" x:Name="ThursdayPicker" ItemsSource="{StaticResource DayTypeOptions}" WidthRequest="120" />
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Text="Friday" VerticalOptions="Center" />
+                <Picker Grid.Column="1" x:Name="FridayPicker" ItemsSource="{StaticResource DayTypeOptions}" WidthRequest="120" />
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Text="Saturday" VerticalOptions="Center" />
+                <Picker Grid.Column="1" x:Name="SaturdayPicker" ItemsSource="{StaticResource DayTypeOptions}" WidthRequest="120" />
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Text="Sunday" VerticalOptions="Center" />
+                <Picker Grid.Column="1" x:Name="SundayPicker" ItemsSource="{StaticResource DayTypeOptions}" WidthRequest="120" />
+            </Grid>
+
+            <Button Text="Save" Clicked="OnSaveClicked" FontAttributes="Bold" Margin="0,16,0,0" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

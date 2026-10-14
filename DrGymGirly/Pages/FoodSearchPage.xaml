@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DrGymGirly.FoodSearchPage"
+             Title="Search Food">
+
+    <Grid Padding="24" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="8">
+        <Label Text="Search Food" Style="{StaticResource PageTitle}" />
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,8,0,0">
+            <SearchBar x:Name="SearchBox"
+                       Placeholder="Search Open Food Facts..."
+                       TextChanged="OnSearchTextChanged" />
+            <Button Grid.Column="1" Text="📷 Scan" Clicked="OnScanBarcodeClicked" Style="{StaticResource SecondaryButton}" />
+        </Grid>
+
+        <CollectionView Grid.Row="2" ItemsSource="{Binding Results}" Margin="0,8,0,0">
+            <CollectionView.EmptyView>
+                <Label Text="No results. Try a different search." HorizontalOptions="Center" Margin="0,40" Style="{StaticResource MutedLabel}" />
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource CardBorder}">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnResultTapped" CommandParameter="{Binding .}" />
+                        </Border.GestureRecognizers>
+                        <VerticalStackLayout>
+                            <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="14" />
+                            <Label Text="{Binding SubtitleText}" Style="{StaticResource MutedLabel}" FontSize="10" Margin="0,2,0,0" />
+                            <Label Text="{Binding MacrosDisplay}" Style="{StaticResource MutedLabel}" FontSize="11" Margin="0,2,0,0" />
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Label Grid.Row="3"
+               Text="Can't find it? Add manually"
+               Style="{StaticResource AccentLabel}"
+               HorizontalOptions="Center"
+               Margin="0,8,0,0">
+            <Label.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnAddManuallyClicked" />
+            </Label.GestureRecognizers>
+        </Label>
+    </Grid>
+</ContentPage>

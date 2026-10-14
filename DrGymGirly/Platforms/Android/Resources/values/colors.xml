@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#FF5833</color>
+    <!-- Darker variant of colorPrimary (Android's own convention, separate
+         from the MAUI "PrimaryDark" token) - drives the status bar tint. -->
+    <color name="colorPrimaryDark">#B8371A</color>
+    <color name="colorAccent">#FFB238</color>
+</resources>

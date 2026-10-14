@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DrGymGirly.NutritionPage"
+             Title="Nutrition">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="16">
+            <Label Text="{Binding SelectedDateHeading}" Style="{StaticResource PageTitle}" />
+
+            <!-- Calendar -->
+            <VerticalStackLayout Spacing="10">
+                <Grid ColumnDefinitions="*,*,*,*,*,*,*">
+                    <Label Text="Mo" Style="{StaticResource MutedLabel}" FontSize="11" HorizontalOptions="Center" />
+                    <Label Grid.Column="1" Text="Tu" Style="{StaticResource MutedLabel}" FontSize="11" HorizontalOptions="Center" />
+                    <Label Grid.Column="2" Text="We" Style="{StaticResource MutedLabel}" FontSize="11" HorizontalOptions="Center" />
+                    <Label Grid.Column="3" Text="Th" Style="{StaticResource MutedLabel}" FontSize="11" HorizontalOptions="Center" />
+                    <Label Grid.Column="4" Text="Fr" Style="{StaticResource MutedLabel}" FontSize="11" HorizontalOptions="Center" />
+                    <Label Grid.Column="5" Text="Sa" Style="{StaticResource MutedLabel}" FontSize="11" HorizontalOptions="Center" />
+                    <Label Grid.Column="6" Text="Su" Style="{StaticResource MutedLabel}" FontSize="11" HorizontalOptions="Center" />
+                </Grid>
+
+                <CollectionView ItemsSource="{Binding CalendarDays}">
+                    <CollectionView.ItemsLayout>
+                        <GridItemsLayout Orientation="Vertical" Span="7" />
+                    </CollectionView.ItemsLayout>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid HeightRequest="40">
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnCalendarDayTapped" CommandParameter="{Binding .}" />
+                                </Grid.GestureRecognizers>
+                                <Border StrokeThickness="0"
+                                        BackgroundColor="Transparent"
+                                        StrokeShape="RoundRectangle 16"
+                                        HeightRequest="32"
+                                        WidthRequest="32"
+                                        Padding="0"
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center">
+                                    <Border.Triggers>
+                                        <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
+                                            <Setter Property="BackgroundColor" Value="{StaticResource Primary}" />
+                                        </DataTrigger>
+                                    </Border.Triggers>
+                                    <Grid>
+                                        <Label Text="{Binding DayNumber}" HorizontalOptions="Center" VerticalOptions="Center" FontSize="11">
+                                            <Label.Triggers>
+                                                <DataTrigger TargetType="Label" Binding="{Binding IsToday}" Value="True">
+                                                    <Setter Property="TextColor" Value="{StaticResource Accent}" />
+                                                    <Setter Property="FontAttributes" Value="Bold" />
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Label" Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter Property="TextColor" Value="White" />
+                                                    <Setter Property="FontAttributes" Value="Bold" />
+                                                </DataTrigger>
+                                            </Label.Triggers>
+                                        </Label>
+                                        <BoxView IsVisible="{Binding HasEntries}"
+                                                 Color="{StaticResource Success}"
+                                                 HeightRequest="4"
+                                                 WidthRequest="4"
+                                                 CornerRadius="2"
+                                                 HorizontalOptions="Center"
+                                                 VerticalOptions="End"
+                                                 Margin="0,0,0,2" />
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
+
+            <BoxView HeightRequest="1" Color="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray600}}" Margin="0,4,0,0" />
+
+            <!-- Calorie + macro summary -->
+            <VerticalStackLayout Spacing="6">
+                <VerticalStackLayout x:Name="GoalsViewLayout" Spacing="6">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="{Binding Summary.CaloriesSummaryText}" FontAttributes="Bold" FontSize="13" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="Edit" Clicked="OnEditGoalsClicked" Style="{StaticResource TintedPillButton}" VerticalOptions="Center" />
+                    </Grid>
+                    <Border StrokeThickness="0" HeightRequest="10" Padding="0" StrokeShape="RoundRectangle 5" BackgroundColor="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray600}}">
+                        <Grid x:Name="CalorieBarTrack" ColumnSpacing="0" />
+                    </Border>
+
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12" Margin="0,16,0,0">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Protein" Style="{StaticResource MutedLabel}" FontSize="10" HorizontalOptions="Center" />
+                            <Label Text="{Binding Summary.ProteinSummaryText}" FontAttributes="Bold" FontSize="11" HorizontalOptions="Center" />
+                            <Border StrokeThickness="0" HeightRequest="8" Padding="0" StrokeShape="RoundRectangle 4" BackgroundColor="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray600}}">
+                                <Grid x:Name="ProteinBarTrack" ColumnSpacing="0" />
+                            </Border>
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4">
+                            <Label Text="Carbs" Style="{StaticResource MutedLabel}" FontSize="10" HorizontalOptions="Center" />
+                            <Label Text="{Binding Summary.CarbsSummaryText}" FontAttributes="Bold" FontSize="11" HorizontalOptions="Center" />
+                            <Border StrokeThickness="0" HeightRequest="8" Padding="0" StrokeShape="RoundRectangle 4" BackgroundColor="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray600}}">
+                                <Grid x:Name="CarbsBarTrack" ColumnSpacing="0" />
+                            </Border>
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="2" Spacing="4">
+                            <Label Text="Fat" Style="{StaticResource MutedLabel}" FontSize="10" HorizontalOptions="Center" />
+                            <Label Text="{Binding Summary.FatSummaryText}" FontAttributes="Bold" FontSize="11" HorizontalOptions="Center" />
+                            <Border StrokeThickness="0" HeightRequest="8" Padding="0" StrokeShape="RoundRectangle 4" BackgroundColor="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray600}}">
+                                <Grid x:Name="FatBarTrack" ColumnSpacing="0" />
+                            </Border>
+                        </VerticalStackLayout>
+                    </Grid>
+
+                    <HorizontalStackLayout Spacing="6" Margin="0,8,0,0">
+                        <BoxView Color="{StaticResource MealBreakfast}" WidthRequest="8" HeightRequest="8" CornerRadius="4" VerticalOptions="Center" />
+                        <Label Text="Breakfast" Style="{StaticResource MutedLabel}" FontSize="10" VerticalOptions="Center" />
+                        <BoxView Color="{StaticResource MealLunch}" WidthRequest="8" HeightRequest="8" CornerRadius="4" VerticalOptions="Center" Margin="6,0,0,0" />
+                        <Label Text="Lunch" Style="{StaticResource MutedLabel}" FontSize="10" VerticalOptions="Center" />
+                        <BoxView Color="{StaticResource MealDinner}" WidthRequest="8" HeightRequest="8" CornerRadius="4" VerticalOptions="Center" Margin="6,0,0,0" />
+                        <Label Text="Dinner" Style="{StaticResource MutedLabel}" FontSize="10" VerticalOptions="Center" />
+                        <BoxView Color="{StaticResource MealSnacks}" WidthRequest="8" HeightRequest="8" CornerRadius="4" VerticalOptions="Center" Margin="6,0,0,0" />
+                        <Label Text="Snacks" Style="{StaticResource MutedLabel}" FontSize="10" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+
+                <VerticalStackLayout x:Name="GoalsEditLayout" Spacing="8" IsVisible="False">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Calorie Goal (kcal)" FontSize="12" VerticalOptions="Center" />
+                        <Entry Grid.Column="1" x:Name="CalorieGoalEntry" Keyboard="Numeric" WidthRequest="70" FontSize="12" HorizontalTextAlignment="End" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Protein Goal (g)" FontSize="12" VerticalOptions="Center" />
+                        <Entry Grid.Column="1" x:Name="ProteinGoalEntry" Keyboard="Numeric" WidthRequest="70" FontSize="12" HorizontalTextAlignment="End" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Carbs Goal (g)" FontSize="12" VerticalOptions="Center" />
+                        <Entry Grid.Column="1" x:Name="CarbsGoalEntry" Keyboard="Numeric" WidthRequest="70" FontSize="12" HorizontalTextAlignment="End" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Fat Goal (g)" FontSize="12" VerticalOptions="Center" />
+                        <Entry Grid.Column="1" x:Name="FatGoalEntry" Keyboard="Numeric" WidthRequest="70" FontSize="12" HorizontalTextAlignment="End" />
+                    </Grid>
+                    <HorizontalStackLayout Spacing="8" HorizontalOptions="End" Margin="0,4,0,0">
+                        <Button Text="Cancel" Clicked="OnCancelGoalsClicked" Style="{StaticResource SecondaryButton}" FontSize="11" Padding="10,4" />
+                        <Button Text="Save" Clicked="OnSaveGoalsClicked" FontSize="11" Padding="10,4" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+
+            <BoxView HeightRequest="1" Color="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray600}}" Margin="0,4,0,0" />
+
+            <HorizontalStackLayout Spacing="12">
+                <Button Text="+ Create New Meal" Clicked="OnCreateMealClicked" Style="{StaticResource SecondaryButton}" />
+                <Button Text="Log a Saved Meal" Clicked="OnLogMealClicked" Style="{StaticResource SecondaryButton}" />
+            </HorizontalStackLayout>
+
+            <!-- Breakfast -->
+            <Border Style="{StaticResource CardBorder}" Padding="0">
+              <VerticalStackLayout Spacing="0">
+                <BoxView HeightRequest="12" Color="{StaticResource MealBreakfast}" />
+                <VerticalStackLayout Spacing="8" Padding="16">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="{Binding Summary.BreakfastHeading}" FontAttributes="Bold" FontSize="15" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="+ Add" Clicked="OnAddFoodClicked" CommandParameter="Breakfast" Style="{StaticResource TintedPillButton}" VerticalOptions="Center" />
+                    </Grid>
+                    <CollectionView ItemsSource="{Binding Summary.BreakfastEntries}">
+                        <CollectionView.EmptyView>
+                            <Label Text="No items logged yet." Style="{StaticResource MutedLabel}" FontSize="11" Margin="0,4" />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <SwipeView>
+                                    <SwipeView.LeftItems>
+                                        <SwipeItems>
+                                            <SwipeItem Text="Remove" BackgroundColor="{StaticResource Danger}" Invoked="OnRemoveEntryInvoked" CommandParameter="{Binding .}" />
+                                        </SwipeItems>
+                                    </SwipeView.LeftItems>
+                                    <SwipeView.RightItems>
+                                        <SwipeItems>
+                                            <SwipeItem Text="Edit" BackgroundColor="{StaticResource Gold}" Invoked="OnEditEntryInvoked" CommandParameter="{Binding .}" />
+                                        </SwipeItems>
+                                    </SwipeView.RightItems>
+                                    <VerticalStackLayout BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource OffBlack}}">
+                                        <Grid ColumnDefinitions="*,Auto" Padding="0,8">
+                                            <VerticalStackLayout>
+                                                <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="13" />
+                                                <Label Text="{Binding QuantityDisplay}" Style="{StaticResource MutedLabel}" FontSize="10" />
+                                                <Label Text="{Binding MacrosDisplay}" Style="{StaticResource MutedLabel}" FontSize="11" />
+                                            </VerticalStackLayout>
+                                            <Label Grid.Column="1" Text="{Binding CaloriesDisplay}" VerticalOptions="Center" FontAttributes="Bold" FontSize="12" />
+                                        </Grid>
+                                        <BoxView HeightRequest="1" Color="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray600}}" />
+                                    </VerticalStackLayout>
+                                </SwipeView>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+              </VerticalStackLayout>
+            </Border>
+
+            <!-- Lunch -->
+            <Border Style="{StaticResource CardBorder}" Padding="0">
+              <VerticalStackLayout Spacing="0">
+                <BoxView HeightRequest="12" Color="{StaticResource MealLunch}" />
+                <VerticalStackLayout Spacing="8" Padding="16">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="{Binding Summary.LunchHeading}" FontAttributes="Bold" FontSize="15" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="+ Add" Clicked="OnAddFoodClicked" CommandParameter="Lunch" Style="{StaticResource TintedPillButton}" VerticalOptions="Center" />
+                    </Grid>
+                    <CollectionView ItemsSource="{Binding Summary.LunchEntries}">
+                        <CollectionView.EmptyView>
+                            <Label Text="No items logged yet." Style="{StaticResource MutedLabel}" FontSize="11" Margin="0,4" />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <SwipeView>
+                                    <SwipeView.LeftItems>
+                                        <SwipeItems>
+                                            <SwipeItem Text="Remove" BackgroundColor="{StaticResource Danger}" Invoked="OnRemoveEntryInvoked" CommandParameter="{Binding .}" />
+                                        </SwipeItems>
+                                    </SwipeView.LeftItems>
+                                    <SwipeView.RightItems>
+                                        <SwipeItems>
+                                            <SwipeItem Text="Edit" BackgroundColor="{StaticResource Gold}" Invoked="OnEditEntryInvoked" CommandParameter="{Binding .}" />
+                                        </SwipeItems>
+                                    </SwipeView.RightItems>
+                                    <VerticalStackLayout BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource OffBlack}}">
+                                        <Grid ColumnDefinitions="*,Auto" Padding="0,8">
+                                            <VerticalStackLayout>
+                                                <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="13" />
+                                                <Label Text="{Binding QuantityDisplay}" Style="{StaticResource MutedLabel}" FontSize="10" />
+                                                <Label Text="{Binding MacrosDisplay}" Style="{StaticResource MutedLabel}" FontSize="11" />
+                                            </VerticalStackLayout>
+                                            <Label Grid.Column="1" Text="{Binding CaloriesDisplay}" VerticalOptions="Center" FontAttributes="Bold" FontSize="12" />
+                                        </Grid>
+                                        <BoxView HeightRequest="1" Color="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray600}}" />
+                                    </VerticalStackLayout>
+                                </SwipeView>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+              </VerticalStackLayout>
+            </Border>
+
+            <!-- Dinner -->
+            <Border Style="{StaticResource CardBorder}" Padding="0">
+              <VerticalStackLayout Spacing="0">
+                <BoxView HeightRequest="12" Color="{StaticResource MealDinner}" />
+                <VerticalStackLayout Spacing="8" Padding="16">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="{Binding Summary.DinnerHeading}" FontAttributes="Bold" FontSize="15" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="+ Add" Clicked="OnAddFoodClicked" CommandParameter="Dinner" Style="{StaticResource TintedPillButton}" VerticalOptions="Center" />
+                    </Grid>
+                    <CollectionView ItemsSource="{Binding Summary.DinnerEntries}">
+                        <CollectionView.EmptyView>
+                            <Label Text="No items logged yet." Style="{StaticResource MutedLabel}" FontSize="11" Margin="0,4" />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <SwipeView>
+                                    <SwipeView.LeftItems>
+                                        <SwipeItems>
+                                            <SwipeItem Text="Remove" BackgroundColor="{StaticResource Danger}" Invoked="OnRemoveEntryInvoked" CommandParameter="{Binding .}" />
+                                        </SwipeItems>
+                                    </SwipeView.LeftItems>
+                                    <SwipeView.RightItems>
+                                        <SwipeItems>
+                                            <SwipeItem Text="Edit" BackgroundColor="{StaticResource Gold}" Invoked="OnEditEntryInvoked" CommandParameter="{Binding .}" />
+                                        </SwipeItems>
+                                    </SwipeView.RightItems>
+                                    <VerticalStackLayout BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource OffBlack}}">
+                                        <Grid ColumnDefinitions="*,Auto" Padding="0,8">
+                                            <VerticalStackLayout>
+                                                <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="13" />
+                                                <Label Text="{Binding QuantityDisplay}" Style="{StaticResource MutedLabel}" FontSize="10" />
+                                                <Label Text="{Binding MacrosDisplay}" Style="{StaticResource MutedLabel}" FontSize="11" />
+                                            </VerticalStackLayout>
+                                            <Label Grid.Column="1" Text="{Binding CaloriesDisplay}" VerticalOptions="Center" FontAttributes="Bold" FontSize="12" />
+                                        </Grid>
+                                        <BoxView HeightRequest="1" Color="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray600}}" />
+                                    </VerticalStackLayout>
+                                </SwipeView>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+              </VerticalStackLayout>
+            </Border>
+
+            <!-- Snacks -->
+            <Border Style="{StaticResource CardBorder}" Padding="0">
+              <VerticalStackLayout Spacing="0">
+                <BoxView HeightRequest="12" Color="{StaticResource MealSnacks}" />
+                <VerticalStackLayout Spacing="8" Padding="16">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="{Binding Summary.SnacksHeading}" FontAttributes="Bold" FontSize="15" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="+ Add" Clicked="OnAddFoodClicked" CommandParameter="Snacks" Style="{StaticResource TintedPillButton}" VerticalOptions="Center" />
+                    </Grid>
+                    <CollectionView ItemsSource="{Binding Summary.SnacksEntries}">
+                        <CollectionView.EmptyView>
+                            <Label Text="No items logged yet." Style="{StaticResource MutedLabel}" FontSize="11" Margin="0,4" />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <SwipeView>
+                                    <SwipeView.LeftItems>
+                                        <SwipeItems>
+                                            <SwipeItem Text="Remove" BackgroundColor="{StaticResource Danger}" Invoked="OnRemoveEntryInvoked" CommandParameter="{Binding .}" />
+                                        </SwipeItems>
+                                    </SwipeView.LeftItems>
+                                    <SwipeView.RightItems>
+                                        <SwipeItems>
+                                            <SwipeItem Text="Edit" BackgroundColor="{StaticResource Gold}" Invoked="OnEditEntryInvoked" CommandParameter="{Binding .}" />
+                                        </SwipeItems>
+                                    </SwipeView.RightItems>
+                                    <VerticalStackLayout BackgroundColor="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource OffBlack}}">
+                                        <Grid ColumnDefinitions="*,Auto" Padding="0,8">
+                                            <VerticalStackLayout>
+                                                <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="13" />
+                                                <Label Text="{Binding QuantityDisplay}" Style="{StaticResource MutedLabel}" FontSize="10" />
+                                                <Label Text="{Binding MacrosDisplay}" Style="{StaticResource MutedLabel}" FontSize="11" />
+                                            </VerticalStackLayout>
+                                            <Label Grid.Column="1" Text="{Binding CaloriesDisplay}" VerticalOptions="Center" FontAttributes="Bold" FontSize="12" />
+                                        </Grid>
+                                        <BoxView HeightRequest="1" Color="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray600}}" />
+                                    </VerticalStackLayout>
+                                </SwipeView>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+              </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

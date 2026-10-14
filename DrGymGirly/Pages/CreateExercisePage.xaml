@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DrGymGirly.CreateExercisePage"
+             Title="New Exercise Template">
+
+    <VerticalStackLayout Padding="24" Spacing="16">
+        <Label Text="Global Exercise Library" Style="{StaticResource PageTitle}" />
+        <Label Text="Define a new structural exercise that can be added to any workout template." Style="{StaticResource MutedLabel}" Margin="0,0,0,12" />
+
+        <Entry x:Name="NameEntry" Placeholder="Exercise Name (e.g., Incline Dumbbell Press)" />
+
+        <Label Text="Category Focus" FontAttributes="Bold" Margin="0,8,0,0"/>
+        <Picker x:Name="CategoryPicker">
+            <Picker.ItemsSource>
+                <x:Array Type="{x:Type x:String}">
+                    <x:String>Abs</x:String>
+                    <x:String>Arms</x:String>
+                    <x:String>Back</x:String>
+                    <x:String>Calves</x:String>
+                    <x:String>Cardio</x:String>
+                    <x:String>Chest</x:String>
+                    <x:String>Legs</x:String>
+                    <x:String>Shoulders</x:String>
+                </x:Array>
+            </Picker.ItemsSource>
+        </Picker>
+
+        <Button Text="Add to Library"
+                Clicked="OnSaveExerciseClicked"
+                FontAttributes="Bold"
+                Margin="0,24,0,0" />
+
+        <BoxView HeightRequest="1" Color="{StaticResource Gray200}" Margin="0,16,0,0" />
+
+        <Label Text="Or load a curated starter list covering every category above." Style="{StaticResource MutedLabel}" />
+        <Button Text="Load Starter Exercises"
+                Clicked="OnLoadStarterExercisesClicked"
+                Style="{StaticResource SecondaryButton}" />
+
+        <Label Text="Or import real exercises from the open-source wger database." Style="{StaticResource MutedLabel}" Margin="0,12,0,0" />
+        <Button Text="Import from wger"
+                Clicked="OnImportFromWgerClicked"
+                Style="{StaticResource SecondaryButton}" />
+    </VerticalStackLayout>
+</ContentPage>

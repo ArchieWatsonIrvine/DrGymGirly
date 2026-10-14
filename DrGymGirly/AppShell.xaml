@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="DrGymGirly.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:local="clr-namespace:DrGymGirly"
+    NavigationPage.HasNavigationBar="False"
+    Title="DrGymGirly">
+
+    <TabBar>
+        <ShellContent Title="Workouts"
+                      Icon="icon_workouts.svg"
+                      ContentTemplate="{DataTemplate local:WorkoutPage}"
+                      Route="WorkoutPage" />
+
+        <ShellContent Title="Nutrition"
+                      Icon="icon_nutrition.svg"
+                      ContentTemplate="{DataTemplate local:NutritionPage}"
+                      Route="NutritionPage" />
+    </TabBar>
+</Shell>

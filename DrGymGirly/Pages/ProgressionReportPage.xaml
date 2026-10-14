@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DrGymGirly.ProgressionReportPage"
+             Title="{Binding ExerciseName}">
+
+    <Grid Padding="24" RowDefinitions="Auto,*" RowSpacing="16">
+        <VerticalStackLayout>
+            <Label Text="Progression Audit" Style="{StaticResource PageTitle}" />
+            <Label Text="Tracking your heaviest set per session over time" Style="{StaticResource MutedLabel}" />
+        </VerticalStackLayout>
+
+        <CollectionView Grid.Row="1" ItemsSource="{Binding Records}">
+            <CollectionView.EmptyView>
+                <Label Text="No logged data found for this exercise yet." HorizontalOptions="Center" Margin="0,40" Style="{StaticResource MutedLabel}" />
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource CardBorder}">
+                        <Grid ColumnDefinitions="*,Auto">
+
+                            <VerticalStackLayout VerticalOptions="Center">
+                                <Label Text="{Binding LogDate, StringFormat='{0:dddd, d MMMM yyyy}'}" FontAttributes="Bold" FontSize="14" />
+                                <Label Text="{Binding DisplayDetails}" Style="{StaticResource MutedLabel}" Margin="0,4,0,0" />
+                            </VerticalStackLayout>
+
+                            <VerticalStackLayout Grid.Column="1" HorizontalOptions="End" VerticalOptions="Center">
+
+                                <Label Text="{Binding DifferenceText}" 
+                           TextColor="{Binding DifferenceColor}" 
+                           FontAttributes="Bold" 
+                           FontSize="15" 
+                           HorizontalOptions="End"/>
+
+                                <Label Text="{Binding WeightAchieved, StringFormat='Top set: {0:N1} kg'}"
+                           Style="{StaticResource MutedLabel}"
+                           FontSize="11"
+                           HorizontalOptions="End" />
+
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.MAUI.Controls"
+             x:Class="DrGymGirly.BarcodeScanPage"
+             Title="Scan Barcode">
+
+    <Grid Padding="24" RowDefinitions="Auto,*,Auto" RowSpacing="12">
+        <Label Text="Scan Barcode" Style="{StaticResource PageTitle}" />
+
+        <zxing:CameraBarcodeReaderView Grid.Row="1"
+                                        x:Name="BarcodeReader"
+                                        BarcodesDetected="OnBarcodesDetected" />
+
+        <VerticalStackLayout Grid.Row="2" Spacing="8" Margin="0,12,0,0">
+            <Label Text="Camera not working? Type the barcode instead:" Style="{StaticResource MutedLabel}" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <Entry x:Name="ManualBarcodeEntry" Placeholder="e.g. 5000169005204" Keyboard="Numeric" />
+                <Button Grid.Column="1" Text="Go" Clicked="OnManualBarcodeSubmitted" />
+            </Grid>
+            <Button Text="Cancel" Clicked="OnCancelClicked" Style="{StaticResource SecondaryButton}" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

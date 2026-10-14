@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DrGymGirly.AddCustomFoodPage"
+             Title="Add Food">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="12">
+            <Label Text="Add Food Manually" Style="{StaticResource PageTitle}" />
+            <Label x:Name="BarcodeLabel" Style="{StaticResource MutedLabel}" FontSize="11" />
+
+            <Label Text="Name" FontAttributes="Bold" Margin="0,8,0,0" />
+            <Entry x:Name="NameEntry" Placeholder="e.g. Sainsbury's Mighty Oats" />
+
+            <Label Text="Per 100g (read straight off the packaging):" FontAttributes="Bold" Margin="0,8,0,0" />
+
+            <Label Text="Calories (kcal)" Style="{StaticResource MutedLabel}" FontSize="11" />
+            <Entry x:Name="CaloriesEntry" Keyboard="Numeric" Placeholder="0" />
+
+            <Label Text="Protein (g)" Style="{StaticResource MutedLabel}" FontSize="11" />
+            <Entry x:Name="ProteinEntry" Keyboard="Numeric" Placeholder="0" />
+
+            <Label Text="Carbs (g)" Style="{StaticResource MutedLabel}" FontSize="11" />
+            <Entry x:Name="CarbsEntry" Keyboard="Numeric" Placeholder="0" />
+
+            <Label Text="Fat (g)" Style="{StaticResource MutedLabel}" FontSize="11" />
+            <Entry x:Name="FatEntry" Keyboard="Numeric" Placeholder="0" />
+
+            <HorizontalStackLayout HorizontalOptions="Center" Spacing="12" Margin="0,16,0,0">
+                <Button Text="Cancel" Clicked="OnCancelClicked" Style="{StaticResource SecondaryButton}" />
+                <Button Text="Save" Clicked="OnSaveClicked" FontAttributes="Bold" />
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

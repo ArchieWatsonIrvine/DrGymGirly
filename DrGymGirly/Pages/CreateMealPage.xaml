@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DrGymGirly.CreateMealPage"
+             Title="Create Meal">
+
+    <Grid Padding="24" RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="12">
+        <Label Text="Meal Blueprint" Style="{StaticResource PageTitle}" />
+
+        <Entry Grid.Row="1" x:Name="MealTitleEntry" Placeholder="Meal Name (e.g., Chicken &amp; Rice Bowl)" />
+
+        <Label Grid.Row="2" Text="Ingredients (sourced from Open Food Facts):" FontAttributes="Bold" Margin="0,12,0,0"/>
+
+        <CollectionView Grid.Row="3" ItemsSource="{Binding CurrentDraftIngredients}">
+            <CollectionView.EmptyView>
+                <Label Text="No ingredients added to this meal yet." HorizontalOptions="Center" Margin="0,30" Style="{StaticResource MutedLabel}"/>
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource CardBorder}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <VerticalStackLayout VerticalOptions="Center">
+                                <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="14"/>
+                                <Label Text="{Binding QuantityDisplay}" Style="{StaticResource MutedLabel}" FontSize="10"/>
+                                <Label Text="{Binding MacrosDisplay}" Style="{StaticResource MutedLabel}" FontSize="11"/>
+                            </VerticalStackLayout>
+                            <Label Grid.Column="1" Text="{Binding CaloriesDisplay}" VerticalOptions="Center" Style="{StaticResource AccentLabel}"/>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <HorizontalStackLayout Grid.Row="4" HorizontalOptions="Center" Spacing="12" Margin="0,12,0,0">
+            <Button Text="+ Search Ingredient" Clicked="OnAddIngredientClicked" Style="{StaticResource SecondaryButton}"/>
+            <Button Text="Save Meal" Clicked="OnSaveMealClicked" FontAttributes="Bold"/>
+        </HorizontalStackLayout>
+    </Grid>
+</ContentPage>
