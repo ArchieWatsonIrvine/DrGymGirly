@@ -4,24 +4,24 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace DrGymGirly;
 
-// Edits a specific weekday's routine, not a DayType's - Tuesday's Upper day
-// can have a different exercise list than Thursday's Upper day. DayType is
-// still looked up (via WeeklyScheduleDay) purely for the heading and for
-// category-filtering the exercise picker, not as the storage key.
-[QueryProperty(nameof(DayOfWeek), "DayOfWeek")]
-public partial class EditDayTypeExercisesPage : ContentPage
+// Edits one Workout's exercise list. A Workout can be the default for
+// several weekdays at once (WeeklyScheduleDay), so this edits the shared
+// list itself, not any one day's copy of it.
+[QueryProperty(nameof(WorkoutId), "WorkoutId")]
+public partial class EditWorkoutExercisesPage : ContentPage
 {
     private readonly WorkoutDatabase _database;
     private readonly IServiceProvider _services;
 
-    private DayType _dayType;
+    private Workout? _workout;
+    private bool _hasLoadedExercises;
 
-    public DayOfWeek DayOfWeek { get; set; }
-    public string Heading => $"Edit {DayOfWeek} ({_dayType})";
+    public int WorkoutId { get; set; }
+    public string Heading => _workout is null ? "Edit Workout" : $"Edit {_workout.Name}";
 
     public ObservableCollection<DraftExercise> DraftExercises { get; set; } = [];
 
-    public EditDayTypeExercisesPage(WorkoutDatabase database, IServiceProvider services)
+    public EditWorkoutExercisesPage(WorkoutDatabase database, IServiceProvider services)
     {
         _database = database;
         _services = services;
@@ -29,15 +29,22 @@ public partial class EditDayTypeExercisesPage : ContentPage
         BindingContext = this;
     }
 
+    // OnAppearing fires again every time the ExercisePickerPage modal (opened
+    // from OnAddExerciseClicked) pops back off, since this is the same page
+    // instance becoming active again - not just on first navigation here. The
+    // DraftExercises reload used to run unconditionally, which clobbered any
+    // exercise just added but not yet Saved with whatever was last persisted.
     protected override async void OnAppearing()
     {
         base.OnAppearing();
 
-        var schedule = await _database.GetWeeklyScheduleAsync();
-        _dayType = schedule.TryGetValue(DayOfWeek, out var dayType) ? dayType : DayType.Rest;
+        _workout = await _database.GetWorkoutAsync(WorkoutId);
         OnPropertyChanged(nameof(Heading));
 
-        var existing = await _database.GetScheduledExercisesAsync((int)DayOfWeek);
+        if (_hasLoadedExercises) return;
+        _hasLoadedExercises = true;
+
+        var existing = await _database.GetWorkoutExercisesAsync(WorkoutId);
         DraftExercises.Clear();
         foreach (var exercise in existing)
         {
@@ -45,7 +52,6 @@ public partial class EditDayTypeExercisesPage : ContentPage
             {
                 ExerciseName = exercise.ExerciseName,
                 TargetSets = exercise.TargetSets,
-                TargetReps = exercise.TargetReps,
                 TargetWeightKg = exercise.TargetWeightKg
             });
         }
@@ -61,7 +67,7 @@ public partial class EditDayTypeExercisesPage : ContentPage
         }
 
         var pickerPage = _services.GetRequiredService<ExercisePickerPage>();
-        var selectedExercise = await pickerPage.SelectExerciseAsync(Navigation, exercises, _dayType);
+        var selectedExercise = await pickerPage.SelectExerciseAsync(Navigation, exercises, _workout?.Category ?? DayType.Rest);
         if (selectedExercise is null) return;
 
         var selected = selectedExercise.Name;
@@ -69,22 +75,21 @@ public partial class EditDayTypeExercisesPage : ContentPage
         var setsStr = await DisplayPromptAsync(selected, "Target sets:", "Next", "Cancel", "3", -1, Keyboard.Numeric);
         if (string.IsNullOrEmpty(setsStr)) return;
 
-        var repsStr = await DisplayPromptAsync(selected, "Target reps:", "Next", "Cancel", "10", -1, Keyboard.Numeric);
-        if (string.IsNullOrEmpty(repsStr)) return;
+        if (!int.TryParse(setsStr, out int sets))
+        {
+            await DisplayAlert("Invalid Input", "Target sets must be a whole number.", "OK");
+            return;
+        }
 
         var weightStr = await DisplayPromptAsync(selected, "Target weight in kg (leave blank for bodyweight):", "Save", "Skip", keyboard: Keyboard.Numeric);
         var targetWeight = double.TryParse(weightStr, out double parsedWeight) ? parsedWeight : 0;
 
-        if (int.TryParse(setsStr, out int sets) && int.TryParse(repsStr, out int reps))
+        DraftExercises.Add(new DraftExercise
         {
-            DraftExercises.Add(new DraftExercise
-            {
-                ExerciseName = selected,
-                TargetSets = sets,
-                TargetReps = reps,
-                TargetWeightKg = targetWeight
-            });
-        }
+            ExerciseName = selected,
+            TargetSets = sets,
+            TargetWeightKg = targetWeight
+        });
     }
 
     private void OnRemoveExerciseInvoked(object sender, EventArgs e)
@@ -97,16 +102,15 @@ public partial class EditDayTypeExercisesPage : ContentPage
 
     private async void OnSaveClicked(object sender, EventArgs e)
     {
-        var exercises = DraftExercises.Select(d => new ScheduledExercise
+        var exercises = DraftExercises.Select(d => new WorkoutExercise
         {
             ExerciseName = d.ExerciseName,
             TargetSets = d.TargetSets,
-            TargetReps = d.TargetReps,
             TargetWeightKg = d.TargetWeightKg
         }).ToList();
 
-        await _database.SaveScheduledExercisesAsync((int)DayOfWeek, exercises);
-        await DisplayAlert("Saved", $"{DayOfWeek} routine updated.", "OK");
+        await _database.SaveWorkoutExercisesAsync(WorkoutId, exercises);
+        await DisplayAlert("Saved", $"{_workout?.Name} updated.", "OK");
         await Shell.Current.GoToAsync("..");
     }
 
@@ -114,10 +118,9 @@ public partial class EditDayTypeExercisesPage : ContentPage
     {
         public string ExerciseName { get; set; } = string.Empty;
         public int TargetSets { get; set; }
-        public int TargetReps { get; set; }
         public double TargetWeightKg { get; set; }
         public string TargetsDisplay => TargetWeightKg > 0
-            ? $"{TargetSets}x{TargetReps} @ {TargetWeightKg:0.#}kg"
-            : $"{TargetSets}x{TargetReps}";
+            ? $"{TargetSets} sets @ {TargetWeightKg:0.#}kg"
+            : $"{TargetSets} sets";
     }
 }

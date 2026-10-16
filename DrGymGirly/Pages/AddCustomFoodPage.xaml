@@ -12,6 +12,8 @@
             <Label Text="Name" FontAttributes="Bold" Margin="0,8,0,0" />
             <Entry x:Name="NameEntry" Placeholder="e.g. Sainsbury's Mighty Oats" />
 
+            <Button Text="📷 Scan Nutrition Label" Clicked="OnScanLabelClicked" Style="{StaticResource SecondaryButton}" Margin="0,8,0,0" />
+
             <Label Text="Per 100g (read straight off the packaging):" FontAttributes="Bold" Margin="0,8,0,0" />
 
             <Label Text="Calories (kcal)" Style="{StaticResource MutedLabel}" FontSize="11" />

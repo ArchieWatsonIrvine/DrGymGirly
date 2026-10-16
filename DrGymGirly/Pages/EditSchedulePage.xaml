@@ -4,51 +4,38 @@
              x:Class="DrGymGirly.EditSchedulePage"
              Title="Weekly Schedule">
 
-    <ContentPage.Resources>
-        <!-- Order must match the DayType enum exactly - EditSchedulePage.xaml.cs
-             maps Picker.SelectedIndex straight onto the enum's numeric value. -->
-        <x:Array x:Key="DayTypeOptions" Type="{x:Type x:String}">
-            <x:String>Rest</x:String>
-            <x:String>Pull</x:String>
-            <x:String>Push</x:String>
-            <x:String>Legs</x:String>
-            <x:String>Upper</x:String>
-            <x:String>Lower</x:String>
-        </x:Array>
-    </ContentPage.Resources>
-
     <ScrollView>
         <VerticalStackLayout Padding="24" Spacing="12">
             <Label Text="Weekly Schedule" Style="{StaticResource PageTitle}" />
-            <Label Text="Assign a day type to each day of the week." Style="{StaticResource MutedLabel}" Margin="0,0,0,8" />
+            <Label Text="Assign one or more default workouts (or Rest) to each day of the week." Style="{StaticResource MutedLabel}" Margin="0,0,0,8" />
 
-            <Grid ColumnDefinitions="*,Auto">
+            <Grid ColumnDefinitions="Auto,*">
                 <Label Text="Monday" VerticalOptions="Center" />
-                <Picker Grid.Column="1" x:Name="MondayPicker" ItemsSource="{StaticResource DayTypeOptions}" WidthRequest="120" />
+                <Button Grid.Column="1" x:Name="MondayButton" Text="Rest" Clicked="OnDayClicked" Style="{StaticResource SecondaryButton}" FontSize="12" Padding="10,4" HorizontalOptions="End" />
             </Grid>
-            <Grid ColumnDefinitions="*,Auto">
+            <Grid ColumnDefinitions="Auto,*">
                 <Label Text="Tuesday" VerticalOptions="Center" />
-                <Picker Grid.Column="1" x:Name="TuesdayPicker" ItemsSource="{StaticResource DayTypeOptions}" WidthRequest="120" />
+                <Button Grid.Column="1" x:Name="TuesdayButton" Text="Rest" Clicked="OnDayClicked" Style="{StaticResource SecondaryButton}" FontSize="12" Padding="10,4" HorizontalOptions="End" />
             </Grid>
-            <Grid ColumnDefinitions="*,Auto">
+            <Grid ColumnDefinitions="Auto,*">
                 <Label Text="Wednesday" VerticalOptions="Center" />
-                <Picker Grid.Column="1" x:Name="WednesdayPicker" ItemsSource="{StaticResource DayTypeOptions}" WidthRequest="120" />
+                <Button Grid.Column="1" x:Name="WednesdayButton" Text="Rest" Clicked="OnDayClicked" Style="{StaticResource SecondaryButton}" FontSize="12" Padding="10,4" HorizontalOptions="End" />
             </Grid>
-            <Grid ColumnDefinitions="*,Auto">
+            <Grid ColumnDefinitions="Auto,*">
                 <Label Text="Thursday" VerticalOptions="Center" />
-                <Picker Grid.Column="1" x:Name="ThursdayPicker" ItemsSource="{StaticResource DayTypeOptions}" WidthRequest="120" />
+                <Button Grid.Column="1" x:Name="ThursdayButton" Text="Rest" Clicked="OnDayClicked" Style="{StaticResource SecondaryButton}" FontSize="12" Padding="10,4" HorizontalOptions="End" />
             </Grid>
-            <Grid ColumnDefinitions="*,Auto">
+            <Grid ColumnDefinitions="Auto,*">
                 <Label Text="Friday" VerticalOptions="Center" />
-                <Picker Grid.Column="1" x:Name="FridayPicker" ItemsSource="{StaticResource DayTypeOptions}" WidthRequest="120" />
+                <Button Grid.Column="1" x:Name="FridayButton" Text="Rest" Clicked="OnDayClicked" Style="{StaticResource SecondaryButton}" FontSize="12" Padding="10,4" HorizontalOptions="End" />
             </Grid>
-            <Grid ColumnDefinitions="*,Auto">
+            <Grid ColumnDefinitions="Auto,*">
                 <Label Text="Saturday" VerticalOptions="Center" />
-                <Picker Grid.Column="1" x:Name="SaturdayPicker" ItemsSource="{StaticResource DayTypeOptions}" WidthRequest="120" />
+                <Button Grid.Column="1" x:Name="SaturdayButton" Text="Rest" Clicked="OnDayClicked" Style="{StaticResource SecondaryButton}" FontSize="12" Padding="10,4" HorizontalOptions="End" />
             </Grid>
-            <Grid ColumnDefinitions="*,Auto">
+            <Grid ColumnDefinitions="Auto,*">
                 <Label Text="Sunday" VerticalOptions="Center" />
-                <Picker Grid.Column="1" x:Name="SundayPicker" ItemsSource="{StaticResource DayTypeOptions}" WidthRequest="120" />
+                <Button Grid.Column="1" x:Name="SundayButton" Text="Rest" Clicked="OnDayClicked" Style="{StaticResource SecondaryButton}" FontSize="12" Padding="10,4" HorizontalOptions="End" />
             </Grid>
 
             <Button Text="Save" Clicked="OnSaveClicked" FontAttributes="Bold" Margin="0,16,0,0" />

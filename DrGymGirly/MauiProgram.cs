@@ -1,6 +1,7 @@
 ﻿using System.Net.Http.Headers;
 using DrGymGirly.Services;
 using Microsoft.Extensions.Logging;
+using Plugin.Maui.OCR;
 using ZXing.Net.Maui.Controls;
 
 namespace DrGymGirly;
@@ -19,6 +20,7 @@ public static class MauiProgram
 		builder
 			.UseMauiApp<App>()
 			.UseBarcodeReader()
+			.UseOcr()
 			.ConfigureFonts(fonts =>
 			{
 				fonts.AddFont("Poppins-Regular.ttf", "PoppinsRegular");
@@ -49,10 +51,12 @@ public static class MauiProgram
 		// registrations navigating to them threw MissingMethodException.
 		builder.Services.AddTransient<WorkoutPage>();
 		builder.Services.AddTransient<EditSchedulePage>();
-		builder.Services.AddTransient<EditDayTypeExercisesPage>();
+		builder.Services.AddTransient<EditWorkoutExercisesPage>();
+		builder.Services.AddTransient<WorkoutLibraryPage>();
 		builder.Services.AddTransient<CreateExercisePage>();
 		builder.Services.AddTransient<ExercisePickerPage>();
 		builder.Services.AddTransient<ProgressionReportPage>();
+		builder.Services.AddTransient<BodyWeightPage>();
 		builder.Services.AddTransient<NutritionPage>();
 		builder.Services.AddTransient<CreateMealPage>();
 		builder.Services.AddTransient<FoodSearchPage>();

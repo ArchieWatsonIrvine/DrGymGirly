@@ -17,5 +17,10 @@
                       Icon="icon_nutrition.svg"
                       ContentTemplate="{DataTemplate local:NutritionPage}"
                       Route="NutritionPage" />
+
+        <ShellContent Title="Weight"
+                      Icon="icon_weight.svg"
+                      ContentTemplate="{DataTemplate local:BodyWeightPage}"
+                      Route="BodyWeightPage" />
     </TabBar>
 </Shell>

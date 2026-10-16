@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DrGymGirly.WorkoutLibraryPage"
+             Title="Workouts">
+
+    <Grid Padding="24" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="12">
+        <Label Text="Workout Sets" Style="{StaticResource PageTitle}" />
+        <Label Grid.Row="1" Text="Named exercise sets you can assign to any day." Style="{StaticResource MutedLabel}" />
+
+        <CollectionView Grid.Row="2" ItemsSource="{Binding Workouts}">
+            <CollectionView.EmptyView>
+                <Label Text="No workouts yet. Create one below." HorizontalOptions="Center" Margin="0,30" Style="{StaticResource MutedLabel}" />
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <SwipeView>
+                        <SwipeView.LeftItems>
+                            <SwipeItems>
+                                <SwipeItem Text="Delete" BackgroundColor="{StaticResource Danger}" Invoked="OnDeleteWorkoutInvoked" CommandParameter="{Binding .}" />
+                            </SwipeItems>
+                        </SwipeView.LeftItems>
+                        <Border Style="{StaticResource CardBorder}">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnWorkoutTapped" CommandParameter="{Binding .}" />
+                                </Grid.GestureRecognizers>
+                                <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="14" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="{Binding Category}" Style="{StaticResource AccentLabel}" VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
+                    </SwipeView>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Button Grid.Row="3" Text="+ New Workout" Clicked="OnNewWorkoutClicked" FontAttributes="Bold" Margin="0,12,0,0" />
+    </Grid>
+</ContentPage>

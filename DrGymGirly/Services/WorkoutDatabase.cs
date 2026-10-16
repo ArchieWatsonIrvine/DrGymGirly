@@ -24,61 +24,92 @@ public sealed class WorkoutDatabase
         await _connection.CreateTableAsync<RecentFoodSelection>();
         await _connection.CreateTableAsync<CustomFoodItem>();
         await _connection.CreateTableAsync<NutritionGoal>();
-        await _connection.CreateTableAsync<WeeklyScheduleDay>();
-        await _connection.CreateTableAsync<ScheduledExercise>();
+        await _connection.CreateTableAsync<Workout>();
+        await _connection.CreateTableAsync<WorkoutExercise>();
+        await _connection.CreateTableAsync<WeeklyScheduleWorkout>();
+        await _connection.CreateTableAsync<ScheduleOverrideWorkout>();
         await _connection.CreateTableAsync<ExerciseCompletion>();
         await _connection.CreateTableAsync<ExerciseLog>();
         await _connection.CreateTableAsync<CardioLog>();
+        await _connection.CreateTableAsync<BodyWeightLog>();
 
-        await SeedWeeklyScheduleAsync(_connection);
-        await MigrateDayTypeExercisesAsync(_connection);
+        // The single-workout-per-day tables only need recreating (and
+        // seeding/migrating) while there's still pre-existing data in them to
+        // carry across - once MigrateToMultiWorkoutScheduleAsync below has
+        // dropped them, later launches skip straight past this.
+        var legacyWeeklyExists = await TableExistsAsync(_connection, "WeeklyScheduleDays");
+        if (legacyWeeklyExists)
+        {
+            await _connection.CreateTableAsync<WeeklyScheduleDay>();
+            await SeedWeeklyScheduleAsync(_connection);
+        }
+
+        await MigrateToWorkoutsAsync(_connection);
+        await MigrateToMultiWorkoutScheduleAsync(_connection, legacyWeeklyExists);
         return _connection;
     }
 
-    // One-time migration from the old DayType-keyed routine table to the new
-    // per-weekday ScheduledExercises table: every weekday sharing a DayType
-    // (e.g. Tuesday and Thursday both "Upper") gets its own copy of that
-    // DayType's old exercise list as a starting point, which can then be
-    // edited independently per weekday going forward. Guarded by the old
-    // table's existence, so this only ever runs once per install.
-    private static async Task MigrateDayTypeExercisesAsync(SQLiteAsyncConnection connection)
+    private static async Task<bool> TableExistsAsync(SQLiteAsyncConnection connection, string tableName) =>
+        await connection.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?", tableName) > 0;
+
+    // One-time migration from the old DayType-keyed, per-weekday
+    // ScheduledExercises table to the new named Workout entities: every
+    // weekday that had a non-Rest DayType (or leftover exercises) becomes its
+    // own Workout, carrying that weekday's old exercise list over and becoming
+    // that weekday's new default. Guarded by the old table's existence, so
+    // this only ever runs once per install; WorkoutExercises is a distinct
+    // table name from the old ScheduledExercises, so the old data sits
+    // untouched until this reads and migrates it.
+    private static async Task MigrateToWorkoutsAsync(SQLiteAsyncConnection connection)
     {
         var oldTableExists = await connection.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='DayTypeExercises'");
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='ScheduledExercises'");
         if (oldTableExists == 0) return;
 
-        var oldRows = await connection.QueryAsync<OldDayTypeExerciseRow>("SELECT * FROM DayTypeExercises");
-        var schedule = await connection.Table<WeeklyScheduleDay>().ToListAsync();
+        var oldSchedule = await connection.QueryAsync<OldScheduleRow>("SELECT DayOfWeek, DayType FROM WeeklyScheduleDays");
+        var oldExercises = await connection.QueryAsync<OldScheduledExerciseRow>("SELECT * FROM ScheduledExercises");
 
-        var migrated = new List<ScheduledExercise>();
-        foreach (var scheduleRow in schedule)
+        foreach (var scheduleRow in oldSchedule)
         {
-            foreach (var old in oldRows.Where(r => r.DayType == (int)scheduleRow.DayType))
+            var exercisesForDay = oldExercises.Where(x => x.DayOfWeek == scheduleRow.DayOfWeek).OrderBy(x => x.DisplayOrder).ToList();
+            if (scheduleRow.DayType == (int)DayType.Rest && exercisesForDay.Count == 0) continue;
+
+            var dayOfWeek = (DayOfWeek)scheduleRow.DayOfWeek;
+            var dayType = (DayType)scheduleRow.DayType;
+
+            var workout = new Workout { Name = $"{dayOfWeek} {dayType}", Category = dayType };
+            await connection.InsertAsync(workout);
+
+            var migratedExercises = exercisesForDay.Select(x => new WorkoutExercise
             {
-                migrated.Add(new ScheduledExercise
-                {
-                    DayOfWeek = scheduleRow.DayOfWeek,
-                    DisplayOrder = old.DisplayOrder,
-                    ExerciseName = old.ExerciseName,
-                    TargetSets = old.TargetSets,
-                    TargetReps = old.TargetReps,
-                    TargetWeightKg = old.TargetWeightKg
-                });
+                WorkoutId = workout.Id,
+                DisplayOrder = x.DisplayOrder,
+                ExerciseName = x.ExerciseName,
+                TargetSets = x.TargetSets,
+                TargetWeightKg = x.TargetWeightKg
+            }).ToList();
+            if (migratedExercises.Count > 0)
+            {
+                await connection.InsertAllAsync(migratedExercises);
             }
+
+            await connection.ExecuteAsync("UPDATE WeeklyScheduleDays SET WorkoutId = ? WHERE DayOfWeek = ?", workout.Id, scheduleRow.DayOfWeek);
         }
 
-        if (migrated.Count > 0)
-        {
-            await connection.InsertAllAsync(migrated);
-        }
-
-        await connection.ExecuteAsync("DROP TABLE DayTypeExercises");
+        await connection.ExecuteAsync("DROP TABLE ScheduledExercises");
     }
 
-    private sealed class OldDayTypeExerciseRow
+    private sealed class OldScheduleRow
+    {
+        public int DayOfWeek { get; set; }
+        public int DayType { get; set; }
+    }
+
+    private sealed class OldScheduledExerciseRow
     {
         public int Id { get; set; }
-        public int DayType { get; set; }
+        public int DayOfWeek { get; set; }
         public int DisplayOrder { get; set; }
         public string ExerciseName { get; set; } = string.Empty;
         public int TargetSets { get; set; }
@@ -90,62 +121,118 @@ public sealed class WorkoutDatabase
     {
         if (await connection.Table<WeeklyScheduleDay>().CountAsync() > 0) return;
 
-        await connection.InsertAllAsync(new[]
-        {
-            new WeeklyScheduleDay { DayOfWeek = (int)DayOfWeek.Sunday, DayType = DayType.Legs },
-            new WeeklyScheduleDay { DayOfWeek = (int)DayOfWeek.Monday, DayType = DayType.Pull },
-            new WeeklyScheduleDay { DayOfWeek = (int)DayOfWeek.Tuesday, DayType = DayType.Push },
-            new WeeklyScheduleDay { DayOfWeek = (int)DayOfWeek.Wednesday, DayType = DayType.Rest },
-            new WeeklyScheduleDay { DayOfWeek = (int)DayOfWeek.Thursday, DayType = DayType.Legs },
-            new WeeklyScheduleDay { DayOfWeek = (int)DayOfWeek.Friday, DayType = DayType.Pull },
-            new WeeklyScheduleDay { DayOfWeek = (int)DayOfWeek.Saturday, DayType = DayType.Push }
-        });
+        await connection.InsertAllAsync(Enum.GetValues<DayOfWeek>()
+            .Select(d => new WeeklyScheduleDay { DayOfWeek = (int)d, WorkoutId = null }));
     }
 
-    public async Task<Dictionary<DayOfWeek, DayType>> GetWeeklyScheduleAsync()
+    // One-time migration from the single-workout-per-day WeeklyScheduleDay/
+    // ScheduleOverride tables to the multi-workout WeeklyScheduleWorkout/
+    // ScheduleOverrideWorkout ones, so a day can default to (or be overridden
+    // to) more than one Workout. Each non-null old row becomes one new row;
+    // the old tables are dropped once migrated, so later launches skip this
+    // (legacyWeeklyExists is false and the ScheduleOverrides existence check
+    // below is false too).
+    private static async Task MigrateToMultiWorkoutScheduleAsync(SQLiteAsyncConnection connection, bool legacyWeeklyExists)
     {
-        var connection = await GetConnectionAsync();
-        var rows = await connection.Table<WeeklyScheduleDay>().ToListAsync();
-        return rows.ToDictionary(r => (DayOfWeek)r.DayOfWeek, r => r.DayType);
+        if (legacyWeeklyExists)
+        {
+            var oldDefaults = await connection.Table<WeeklyScheduleDay>().ToListAsync();
+            var migratedDefaults = oldDefaults
+                .Where(x => x.WorkoutId.HasValue)
+                .Select(x => new WeeklyScheduleWorkout { DayOfWeek = x.DayOfWeek, WorkoutId = x.WorkoutId!.Value })
+                .ToList();
+            if (migratedDefaults.Count > 0) await connection.InsertAllAsync(migratedDefaults);
+
+            await connection.ExecuteAsync("DROP TABLE WeeklyScheduleDays");
+        }
+
+        if (await TableExistsAsync(connection, "ScheduleOverrides"))
+        {
+            var oldOverrides = await connection.Table<ScheduleOverride>().ToListAsync();
+            var migratedOverrides = oldOverrides
+                .Select(x => new ScheduleOverrideWorkout { Date = x.Date, WorkoutId = x.WorkoutId })
+                .ToList();
+            if (migratedOverrides.Count > 0) await connection.InsertAllAsync(migratedOverrides);
+
+            await connection.ExecuteAsync("DROP TABLE ScheduleOverrides");
+        }
     }
 
-    public async Task UpdateWeeklyScheduleAsync(Dictionary<DayOfWeek, DayType> schedule)
+    public async Task<List<Workout>> GetAllWorkoutsAsync()
+    {
+        var connection = await GetConnectionAsync();
+        return await connection.Table<Workout>().OrderBy(w => w.Name).ToListAsync();
+    }
+
+    public async Task<Workout?> GetWorkoutAsync(int workoutId)
+    {
+        var connection = await GetConnectionAsync();
+        return await connection.Table<Workout>().Where(w => w.Id == workoutId).FirstOrDefaultAsync();
+    }
+
+    public async Task<int> CreateWorkoutAsync(string name, DayType category)
+    {
+        var connection = await GetConnectionAsync();
+        var workout = new Workout { Name = name, Category = category };
+        await connection.InsertAsync(workout);
+        return workout.Id;
+    }
+
+    // Also removes the workout's own exercise list. Any weekday defaults or
+    // one-off overrides that pointed at it are left as dangling WorkoutIds -
+    // GetScheduledWorkoutsForRangeAsync treats an unresolvable WorkoutId as a
+    // rest day, so this can't surface as a crash, only as that day reverting
+    // to rest.
+    public async Task DeleteWorkoutAsync(int workoutId)
+    {
+        var connection = await GetConnectionAsync();
+        await connection.Table<WorkoutExercise>().Where(x => x.WorkoutId == workoutId).DeleteAsync();
+        await connection.DeleteAsync<Workout>(workoutId);
+    }
+
+    public async Task<Dictionary<DayOfWeek, List<int>>> GetWeeklyDefaultsAsync()
+    {
+        var connection = await GetConnectionAsync();
+        var rows = await connection.Table<WeeklyScheduleWorkout>().ToListAsync();
+        return rows.GroupBy(r => (DayOfWeek)r.DayOfWeek).ToDictionary(g => g.Key, g => g.Select(r => r.WorkoutId).ToList());
+    }
+
+    // Replaces each given weekday's whole default list with the given set of
+    // WorkoutIds (an empty list means that weekday defaults to rest).
+    public async Task UpdateWeeklyDefaultsAsync(Dictionary<DayOfWeek, List<int>> defaults)
     {
         var connection = await GetConnectionAsync();
 
-        foreach (var (dayOfWeek, dayType) in schedule)
+        foreach (var (dayOfWeek, workoutIds) in defaults)
         {
-            var existing = await connection.Table<WeeklyScheduleDay>()
-                .Where(d => d.DayOfWeek == (int)dayOfWeek)
-                .FirstOrDefaultAsync();
-
-            if (existing is not null)
+            var existing = await connection.Table<WeeklyScheduleWorkout>().Where(x => x.DayOfWeek == (int)dayOfWeek).ToListAsync();
+            foreach (var row in existing)
             {
-                existing.DayType = dayType;
-                await connection.UpdateAsync(existing);
+                await connection.DeleteAsync(row);
             }
-            else
+
+            if (workoutIds.Count > 0)
             {
-                await connection.InsertAsync(new WeeklyScheduleDay { DayOfWeek = (int)dayOfWeek, DayType = dayType });
+                await connection.InsertAllAsync(workoutIds.Select(id => new WeeklyScheduleWorkout { DayOfWeek = (int)dayOfWeek, WorkoutId = id }));
             }
         }
     }
 
-    public async Task<List<ScheduledExercise>> GetScheduledExercisesAsync(int dayOfWeek)
+    public async Task<List<WorkoutExercise>> GetWorkoutExercisesAsync(int workoutId)
     {
         var connection = await GetConnectionAsync();
-        return await connection.Table<ScheduledExercise>()
-            .Where(x => x.DayOfWeek == dayOfWeek)
+        return await connection.Table<WorkoutExercise>()
+            .Where(x => x.WorkoutId == workoutId)
             .OrderBy(x => x.DisplayOrder)
             .ToListAsync();
     }
 
-    // Replaces the whole exercise list for a specific weekday with the given set.
-    public async Task SaveScheduledExercisesAsync(int dayOfWeek, List<ScheduledExercise> exercises)
+    // Replaces the whole exercise list for a specific workout with the given set.
+    public async Task SaveWorkoutExercisesAsync(int workoutId, List<WorkoutExercise> exercises)
     {
         var connection = await GetConnectionAsync();
 
-        var existing = await connection.Table<ScheduledExercise>().Where(x => x.DayOfWeek == dayOfWeek).ToListAsync();
+        var existing = await connection.Table<WorkoutExercise>().Where(x => x.WorkoutId == workoutId).ToListAsync();
         foreach (var item in existing)
         {
             await connection.DeleteAsync(item);
@@ -154,7 +241,7 @@ public sealed class WorkoutDatabase
         for (var i = 0; i < exercises.Count; i++)
         {
             exercises[i].Id = 0;
-            exercises[i].DayOfWeek = dayOfWeek;
+            exercises[i].WorkoutId = workoutId;
             exercises[i].DisplayOrder = i + 1;
         }
 
@@ -164,23 +251,123 @@ public sealed class WorkoutDatabase
         }
     }
 
-    // Swaps two weekdays' entire exercise lists (e.g. "move Thursday's
-    // workout to Friday" by swapping Thursday <-> Friday) - the weekdays'
-    // DayType assignments in WeeklyScheduleDay are untouched, only which
-    // exercise list lives on which weekday.
-    public async Task SwapScheduledExercisesAsync(int dayOfWeekA, int dayOfWeekB)
+    // What's actually scheduled on a specific date: any ScheduleOverrideWorkout
+    // rows for that exact date if any exist (even just the null-WorkoutId rest
+    // marker - that still counts as "overridden"), else that weekday's
+    // WeeklyScheduleWorkout defaults. Empty list means rest.
+    private static async Task<List<int>> GetEffectiveWorkoutIdsAsync(SQLiteAsyncConnection connection, DateTime date)
     {
-        if (dayOfWeekA == dayOfWeekB) return;
+        var day = date.Date;
+
+        var overrideRows = await connection.Table<ScheduleOverrideWorkout>().Where(x => x.Date == day).ToListAsync();
+        if (overrideRows.Count > 0)
+        {
+            return overrideRows.Where(x => x.WorkoutId.HasValue).Select(x => x.WorkoutId!.Value).ToList();
+        }
+
+        var defaultRows = await connection.Table<WeeklyScheduleWorkout>().Where(x => x.DayOfWeek == (int)day.DayOfWeek).ToListAsync();
+        return defaultRows.Select(x => x.WorkoutId).ToList();
+    }
+
+    // Batch-resolves which Workouts are effectively scheduled for each date in
+    // the range - used by the calendar strip, which needs this for 7 days at
+    // once rather than one query per day.
+    public async Task<Dictionary<DateTime, List<Workout>>> GetScheduledWorkoutsForRangeAsync(DateTime rangeStart, DateTime rangeEndExclusive)
+    {
+        var connection = await GetConnectionAsync();
+
+        var defaultsByDay = (await connection.Table<WeeklyScheduleWorkout>().ToListAsync())
+            .GroupBy(d => (DayOfWeek)d.DayOfWeek)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.WorkoutId).ToList());
+
+        var overridesByDate = (await connection.Table<ScheduleOverrideWorkout>()
+            .Where(x => x.Date >= rangeStart.Date && x.Date < rangeEndExclusive.Date)
+            .ToListAsync())
+            .GroupBy(o => o.Date)
+            .ToDictionary(g => g.Key, g => g.Where(x => x.WorkoutId.HasValue).Select(x => x.WorkoutId!.Value).ToList());
+
+        var workoutsById = (await connection.Table<Workout>().ToListAsync()).ToDictionary(w => w.Id);
+
+        var result = new Dictionary<DateTime, List<Workout>>();
+        for (var date = rangeStart.Date; date < rangeEndExclusive.Date; date = date.AddDays(1))
+        {
+            var workoutIds = overridesByDate.TryGetValue(date, out var overrideIds) ? overrideIds : defaultsByDay.GetValueOrDefault(date.DayOfWeek, []);
+            result[date] = workoutIds.Where(workoutsById.ContainsKey).Select(id => workoutsById[id]).ToList();
+        }
+
+        return result;
+    }
+
+    // Moves one specific workout from fromDate onto toDate for that
+    // occurrence only: both dates get a full-replacement ScheduleOverrideWorkout
+    // list (the chosen workout removed from fromDate's current list, added to
+    // toDate's), leaving every other workout scheduled on either day alone,
+    // and leaving WeeklyScheduleWorkout's recurring defaults untouched - so
+    // the following week, both weekdays fall back to their normal defaults again.
+    public async Task MoveWorkoutOccurrenceAsync(DateTime fromDate, DateTime toDate, int workoutId)
+    {
+        if (fromDate.Date == toDate.Date) return;
 
         var connection = await GetConnectionAsync();
 
-        var exercisesA = await connection.Table<ScheduledExercise>().Where(x => x.DayOfWeek == dayOfWeekA).ToListAsync();
-        var exercisesB = await connection.Table<ScheduledExercise>().Where(x => x.DayOfWeek == dayOfWeekB).ToListAsync();
+        var fromIds = await GetEffectiveWorkoutIdsAsync(connection, fromDate);
+        var toIds = await GetEffectiveWorkoutIdsAsync(connection, toDate);
 
-        foreach (var item in exercisesA) item.DayOfWeek = dayOfWeekB;
-        foreach (var item in exercisesB) item.DayOfWeek = dayOfWeekA;
+        var newFromIds = fromIds.Where(id => id != workoutId).ToList();
+        var newToIds = toIds.Contains(workoutId) ? toIds : [.. toIds, workoutId];
 
-        await connection.UpdateAllAsync(exercisesA.Concat(exercisesB));
+        await ReplaceOverrideAsync(connection, fromDate.Date, newFromIds);
+        await ReplaceOverrideAsync(connection, toDate.Date, newToIds);
+    }
+
+    private static async Task ReplaceOverrideAsync(SQLiteAsyncConnection connection, DateTime date, List<int> workoutIds)
+    {
+        var existing = await connection.Table<ScheduleOverrideWorkout>().Where(x => x.Date == date).ToListAsync();
+        foreach (var row in existing)
+        {
+            await connection.DeleteAsync(row);
+        }
+
+        if (workoutIds.Count == 0)
+        {
+            await connection.InsertAsync(new ScheduleOverrideWorkout { Date = date, WorkoutId = null });
+        }
+        else
+        {
+            await connection.InsertAllAsync(workoutIds.Select(id => new ScheduleOverrideWorkout { Date = date, WorkoutId = id }));
+        }
+    }
+
+    // An override (from Move, or a leftover one-off from before this date's
+    // weekly default was set up the way it is now) fully replaces that date's
+    // weekly defaults for as long as it exists - it never expires on its own.
+    // This is the only way to drop it and let the date go back to following
+    // WeeklyScheduleWorkout again.
+    public async Task<bool> HasOverrideAsync(DateTime date)
+    {
+        var connection = await GetConnectionAsync();
+        return await connection.Table<ScheduleOverrideWorkout>().Where(x => x.Date == date.Date).CountAsync() > 0;
+    }
+
+    public async Task ClearOverrideAsync(DateTime date)
+    {
+        var connection = await GetConnectionAsync();
+        var existing = await connection.Table<ScheduleOverrideWorkout>().Where(x => x.Date == date.Date).ToListAsync();
+        foreach (var row in existing)
+        {
+            await connection.DeleteAsync(row);
+        }
+    }
+
+    // Batch version of HasOverrideAsync for the calendar strip, so it can
+    // mark every overridden date in the visible week at once.
+    public async Task<HashSet<DateTime>> GetOverriddenDatesAsync(DateTime rangeStart, DateTime rangeEndExclusive)
+    {
+        var connection = await GetConnectionAsync();
+        var rows = await connection.Table<ScheduleOverrideWorkout>()
+            .Where(x => x.Date >= rangeStart.Date && x.Date < rangeEndExclusive.Date)
+            .ToListAsync();
+        return rows.Select(x => x.Date).ToHashSet();
     }
 
     public async Task<WorkoutDayDisplay> GetWorkoutDayViewAsync(DateTime date)
@@ -188,17 +375,24 @@ public sealed class WorkoutDatabase
         var connection = await GetConnectionAsync();
         var day = date.Date;
 
-        var scheduleRow = await connection.Table<WeeklyScheduleDay>()
-            .Where(x => x.DayOfWeek == (int)day.DayOfWeek)
-            .FirstOrDefaultAsync();
-        var dayType = scheduleRow?.DayType ?? DayType.Rest;
+        var workoutIds = await GetEffectiveWorkoutIdsAsync(connection, day);
+        var workoutsById = workoutIds.Count == 0
+            ? new Dictionary<int, Workout>()
+            : (await connection.Table<Workout>().Where(w => workoutIds.Contains(w.Id)).ToListAsync()).ToDictionary(w => w.Id);
 
-        var routine = await connection.Table<ScheduledExercise>()
-            .Where(x => x.DayOfWeek == (int)day.DayOfWeek)
-            .OrderBy(x => x.DisplayOrder)
-            .ToListAsync();
+        // Preserve the schedule's own ordering (e.g. whichever was assigned
+        // first) rather than whatever order the DB happens to return.
+        var workouts = workoutIds.Where(workoutsById.ContainsKey).Select(id => workoutsById[id]).ToList();
+        var dayType = workouts.Count > 0 ? workouts[0].Category : DayType.Rest;
 
-        var exerciseNames = routine.Select(e => e.ExerciseName).ToList();
+        var routine = workouts.Count == 0
+            ? []
+            : await connection.Table<WorkoutExercise>()
+                .Where(x => workoutIds.Contains(x.WorkoutId))
+                .OrderBy(x => x.DisplayOrder)
+                .ToListAsync();
+
+        var exerciseNames = routine.Select(e => e.ExerciseName).Distinct().ToList();
 
         // Optimized lookups (batch-fetch then group) rather than one query per
         // exercise, matching the pattern used for the nutrition lookups above.
@@ -220,10 +414,13 @@ public sealed class WorkoutDatabase
                     .First();
             });
 
-        var todayMap = allLogs
+        // Every set logged today, in the order they were logged - not just
+        // the heaviest. Showing only the best set made additional sets look
+        // like they hadn't been saved whenever they weren't a new high.
+        var todaysSetsMap = allLogs
             .Where(l => l.DateLogged == day)
             .GroupBy(l => l.ExerciseName)
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(l => l.WeightCompletedKg).First());
+            .ToDictionary(g => g.Key, g => g.OrderBy(l => l.Id).ToList());
 
         var completedToday = exerciseNames.Count == 0
             ? []
@@ -233,24 +430,42 @@ public sealed class WorkoutDatabase
                 .Select(x => x.ExerciseName)
                 .ToHashSet();
 
-        var exerciseDisplays = routine.Select(exercise =>
+        ExerciseDisplay ToDisplay(WorkoutExercise exercise)
         {
             previousMap.TryGetValue(exercise.ExerciseName, out var previousLog);
-            todayMap.TryGetValue(exercise.ExerciseName, out var todayLog);
+            todaysSetsMap.TryGetValue(exercise.ExerciseName, out var todaysSets);
+            todaysSets ??= [];
 
             return new ExerciseDisplay
             {
                 ExerciseName = exercise.ExerciseName,
                 TargetSets = exercise.TargetSets,
-                TargetReps = exercise.TargetReps,
                 TargetWeightKg = exercise.TargetWeightKg,
                 PreviousPerformance = previousLog is null
                     ? "No previous data"
                     : $"Previous: {previousLog.RepsCompleted} reps @ {previousLog.WeightCompletedKg}kg",
-                LoggedToday = todayLog is not null,
-                LoggedTodayText = todayLog is null ? string.Empty : $"Logged: {todayLog.RepsCompleted} reps @ {todayLog.WeightCompletedKg}kg",
+                TodaysSets = todaysSets.Select((log, i) => new LoggedSetDisplay
+                {
+                    Id = log.Id,
+                    SetNumber = i + 1,
+                    Reps = log.RepsCompleted,
+                    Weight = log.WeightCompletedKg,
+                    DateLogged = log.DateLogged,
+                    WasEdited = log.WasEdited
+                }).ToList(),
                 IsCompleted = completedToday.Contains(exercise.ExerciseName)
             };
+        }
+
+        // One section per scheduled workout, so a day with both a Physio and
+        // a Gym session (say) shows them as two separate, named groups rather
+        // than one flattened exercise list.
+        var sections = workouts.Select(w => new WorkoutSectionDisplay
+        {
+            WorkoutId = w.Id,
+            WorkoutName = w.Name,
+            Category = w.Category,
+            Exercises = routine.Where(x => x.WorkoutId == w.Id).Select(ToDisplay).ToList()
         }).ToList();
 
         var cardioLogs = await connection.Table<CardioLog>()
@@ -261,13 +476,14 @@ public sealed class WorkoutDatabase
         {
             Date = day,
             DayType = dayType,
-            Exercises = exerciseDisplays,
+            Sections = sections,
             CardioLogs = cardioLogs.Select(c => new CardioLogDisplay
             {
                 Id = c.Id,
                 ActivityName = c.ActivityName,
                 DurationMinutes = c.DurationMinutes,
-                DistanceKm = c.DistanceKm
+                DistanceKm = c.DistanceKm,
+                Intensity = c.Intensity
             }).ToList()
         };
     }
@@ -282,6 +498,18 @@ public sealed class WorkoutDatabase
             RepsCompleted = reps,
             WeightCompletedKg = weightKg
         });
+    }
+
+    public async Task UpdateExerciseLogAsync(int logId, int reps, double weightKg)
+    {
+        var connection = await GetConnectionAsync();
+        var log = await connection.Table<ExerciseLog>().Where(x => x.Id == logId).FirstOrDefaultAsync();
+        if (log is null) return;
+
+        log.RepsCompleted = reps;
+        log.WeightCompletedKg = weightKg;
+        log.WasEdited = true;
+        await connection.UpdateAsync(log);
     }
 
     // Plain done/not-done toggle for "did the reps for this exercise today" -
@@ -305,7 +533,7 @@ public sealed class WorkoutDatabase
         }
     }
 
-    public async Task AddCardioLogAsync(DateTime date, string activityName, int durationMinutes, double? distanceKm)
+    public async Task AddCardioLogAsync(DateTime date, string activityName, int durationMinutes, double? distanceKm, CardioIntensity intensity)
     {
         var connection = await GetConnectionAsync();
         await connection.InsertAsync(new CardioLog
@@ -313,7 +541,8 @@ public sealed class WorkoutDatabase
             DateLogged = date.Date,
             ActivityName = activityName,
             DurationMinutes = durationMinutes,
-            DistanceKm = distanceKm
+            DistanceKm = distanceKm,
+            Intensity = intensity
         });
     }
 
@@ -321,6 +550,54 @@ public sealed class WorkoutDatabase
     {
         var connection = await GetConnectionAsync();
         await connection.DeleteAsync<CardioLog>(id);
+    }
+
+    // Replaces that day's entry if one already exists, so correcting today's
+    // weigh-in doesn't leave a second row behind.
+    public async Task LogBodyWeightAsync(DateTime date, double weightKg)
+    {
+        var connection = await GetConnectionAsync();
+        var day = date.Date;
+
+        var existing = await connection.Table<BodyWeightLog>().Where(x => x.DateLogged == day).FirstOrDefaultAsync();
+        if (existing is not null)
+        {
+            existing.WeightKg = weightKg;
+            await connection.UpdateAsync(existing);
+        }
+        else
+        {
+            await connection.InsertAsync(new BodyWeightLog { DateLogged = day, WeightKg = weightKg });
+        }
+    }
+
+    // Reuses ProgressionRecord/WeightProgressionDrawable as-is - both are
+    // already just "date + weight", the same shape body weight is.
+    public async Task<List<ProgressionRecord>> GetBodyWeightHistoryAsync()
+    {
+        var connection = await GetConnectionAsync();
+        var logs = await connection.Table<BodyWeightLog>().OrderBy(x => x.DateLogged).ToListAsync();
+
+        var records = new List<ProgressionRecord>();
+        double? previousWeight = null;
+
+        foreach (var log in logs)
+        {
+            double? difference = previousWeight is null ? null : log.WeightKg - previousWeight;
+
+            records.Add(new ProgressionRecord
+            {
+                LogDate = log.DateLogged,
+                WeightAchieved = log.WeightKg,
+                WeightDifference = difference,
+                DisplayDetails = $"{log.WeightKg:0.#}kg"
+            });
+
+            previousWeight = log.WeightKg;
+        }
+
+        records.Reverse();
+        return records;
     }
 
     // Used by the workout calendar to mark which days already have something
@@ -369,7 +646,9 @@ public sealed class WorkoutDatabase
 
             records.Add(new ProgressionRecord
             {
+                Id = log.Id,
                 LogDate = log.DateLogged,
+                RepsAchieved = log.RepsCompleted,
                 WeightAchieved = log.WeightCompletedKg,
                 WeightDifference = difference,
                 DisplayDetails = $"{log.RepsCompleted} reps @ {log.WeightCompletedKg}kg"
@@ -797,24 +1076,46 @@ public sealed class WorkoutDatabase
     {
         public DateTime Date { get; init; }
         public DayType DayType { get; init; }
-        public List<ExerciseDisplay> Exercises { get; init; } = [];
+        public List<WorkoutSectionDisplay> Sections { get; init; } = [];
         public List<CardioLogDisplay> CardioLogs { get; init; } = [];
+    }
+
+    // One scheduled Workout's own exercises for the day - a day can have
+    // several of these (e.g. Physio + Gym) shown as separate groups.
+    public sealed class WorkoutSectionDisplay
+    {
+        public int WorkoutId { get; init; }
+        public string WorkoutName { get; init; } = string.Empty;
+        public DayType Category { get; init; }
+        public List<ExerciseDisplay> Exercises { get; init; } = [];
     }
 
     public sealed class ExerciseDisplay
     {
         public string ExerciseName { get; init; } = string.Empty;
         public int TargetSets { get; init; }
-        public int TargetReps { get; init; }
         public double TargetWeightKg { get; init; }
         public string PreviousPerformance { get; init; } = string.Empty;
-        public bool LoggedToday { get; init; }
-        public string LoggedTodayText { get; init; } = string.Empty;
+        public List<LoggedSetDisplay> TodaysSets { get; init; } = [];
         public bool IsCompleted { get; init; }
 
+        public bool LoggedToday => TodaysSets.Count > 0;
+
         public string TargetsDisplay => TargetWeightKg > 0
-            ? $"{TargetSets} x {TargetReps} @ {TargetWeightKg:0.#}kg"
-            : $"{TargetSets} x {TargetReps}";
+            ? $"{TargetSets} sets @ {TargetWeightKg:0.#}kg"
+            : $"{TargetSets} sets";
+    }
+
+    public sealed class LoggedSetDisplay
+    {
+        public int Id { get; init; }
+        public int SetNumber { get; init; }
+        public int Reps { get; init; }
+        public double Weight { get; init; }
+        public DateTime DateLogged { get; init; }
+        public bool WasEdited { get; init; }
+
+        public string DisplayText => $"Set {SetNumber}: {Reps} reps @ {Weight:0.#}kg";
     }
 
     public sealed class CardioLogDisplay
@@ -823,15 +1124,18 @@ public sealed class WorkoutDatabase
         public string ActivityName { get; init; } = string.Empty;
         public int DurationMinutes { get; init; }
         public double? DistanceKm { get; init; }
+        public CardioIntensity Intensity { get; init; }
 
         public string DisplayText => DistanceKm.HasValue
-            ? $"{ActivityName} - {DurationMinutes} min, {DistanceKm:0.##} km"
-            : $"{ActivityName} - {DurationMinutes} min";
+            ? $"{ActivityName} - {DurationMinutes} min, {DistanceKm:0.##} km ({Intensity})"
+            : $"{ActivityName} - {DurationMinutes} min ({Intensity})";
     }
 
     public class ProgressionRecord
 {
+    public int Id { get; set; }
     public DateTime LogDate { get; set; }
+    public int RepsAchieved { get; set; }
     public double WeightAchieved { get; set; }
     public double? WeightDifference { get; set; }
     public string DisplayDetails { get; set; } = string.Empty;

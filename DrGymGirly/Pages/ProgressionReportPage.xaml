@@ -4,19 +4,27 @@
              x:Class="DrGymGirly.ProgressionReportPage"
              Title="{Binding ExerciseName}">
 
-    <Grid Padding="24" RowDefinitions="Auto,*" RowSpacing="16">
+    <Grid Padding="24" RowDefinitions="Auto,Auto,*" RowSpacing="16">
         <VerticalStackLayout>
             <Label Text="Progression Audit" Style="{StaticResource PageTitle}" />
-            <Label Text="Tracking your heaviest set per session over time" Style="{StaticResource MutedLabel}" />
+            <Label Text="Tracking your heaviest set per session over time - tap an entry to correct it" Style="{StaticResource MutedLabel}" />
+            <Label Text="{Binding BaselineSummary}" Style="{StaticResource AccentLabel}" FontSize="12" Margin="0,4,0,0" IsVisible="{Binding HasBaselineSummary}" />
         </VerticalStackLayout>
 
-        <CollectionView Grid.Row="1" ItemsSource="{Binding Records}">
+        <Border Grid.Row="1" Style="{StaticResource CardBorder}" Padding="8" IsVisible="{Binding HasChartData}">
+            <GraphicsView x:Name="ProgressionChart" HeightRequest="200" />
+        </Border>
+
+        <CollectionView Grid.Row="2" ItemsSource="{Binding Records}">
             <CollectionView.EmptyView>
                 <Label Text="No logged data found for this exercise yet." HorizontalOptions="Center" Margin="0,40" Style="{StaticResource MutedLabel}" />
             </CollectionView.EmptyView>
             <CollectionView.ItemTemplate>
                 <DataTemplate>
                     <Border Style="{StaticResource CardBorder}">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnRecordTapped" CommandParameter="{Binding .}" />
+                        </Border.GestureRecognizers>
                         <Grid ColumnDefinitions="*,Auto">
 
                             <VerticalStackLayout VerticalOptions="Center">

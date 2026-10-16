@@ -2,6 +2,13 @@ using SQLite;
 
 namespace DrGymGirly.Models;
 
+public enum CardioIntensity
+{
+    Light,
+    Moderate,
+    Intense
+}
+
 // Logged independently of the day's main lifting routine, so cardio can be
 // added to any day regardless of its assigned DayType.
 [Table("CardioLogs")]
@@ -16,4 +23,5 @@ public sealed class CardioLog
     public string ActivityName { get; set; } = string.Empty;
     public int DurationMinutes { get; set; }
     public double? DistanceKm { get; set; }
+    public CardioIntensity Intensity { get; set; } = CardioIntensity.Moderate;
 }

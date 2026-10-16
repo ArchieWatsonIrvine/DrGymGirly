@@ -6,9 +6,10 @@
 
     <ScrollView>
         <VerticalStackLayout Padding="24" Spacing="16">
-            <Grid ColumnDefinitions="*,Auto">
+            <Grid ColumnDefinitions="*,Auto,Auto">
                 <Label Text="{Binding SelectedDateHeading}" Style="{StaticResource PageTitle}" />
                 <DatePicker Grid.Column="1" x:Name="JumpDatePicker" DateSelected="OnJumpDateSelected" Format="d MMM" FontSize="13" VerticalOptions="Center" />
+                <Button Grid.Column="2" Text="&#9776;" Clicked="OnMenuClicked" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light={StaticResource Gray900}, Dark={StaticResource White}}" FontSize="22" Padding="8,0" VerticalOptions="Center" />
             </Grid>
 
             <!-- Calendar -->
@@ -34,6 +35,7 @@
                                     <TapGestureRecognizer Tapped="OnCalendarDayTapped" CommandParameter="{Binding .}" />
                                 </Grid.GestureRecognizers>
                                 <Border StrokeThickness="0"
+                                        Stroke="{StaticResource Danger}"
                                         BackgroundColor="Transparent"
                                         StrokeShape="RoundRectangle 16"
                                         HeightRequest="32"
@@ -44,6 +46,14 @@
                                     <Border.Triggers>
                                         <DataTrigger TargetType="Border" Binding="{Binding IsSelected}" Value="True">
                                             <Setter Property="BackgroundColor" Value="{StaticResource Primary}" />
+                                        </DataTrigger>
+                                        <!-- A one-off override (Move, or a leftover from before this day's
+                                             weekly default existed) hides this day's weekly schedule for as
+                                             long as it's there - this ring is the only hint it's present,
+                                             since it never expires on its own. Clear it via the menu's
+                                             "Reset to Default" (shown only when this day has one). -->
+                                        <DataTrigger TargetType="Border" Binding="{Binding IsOverridden}" Value="True">
+                                            <Setter Property="StrokeThickness" Value="2" />
                                         </DataTrigger>
                                     </Border.Triggers>
                                     <Grid>
@@ -84,22 +94,24 @@
             <BoxView HeightRequest="1" Color="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray600}}" Margin="0,4,0,0" />
 
             <Label Text="{Binding DayTypeHeading}" FontAttributes="Bold" FontSize="18" />
-            <HorizontalStackLayout Spacing="6">
-                <Button Text="Library" Clicked="OnManageLibraryClicked" Style="{StaticResource SecondaryButton}" FontSize="10" Padding="10,4" />
-                <Button Text="Edit Day" Clicked="OnEditDayTypeExercisesClicked" Style="{StaticResource SecondaryButton}" FontSize="10" Padding="10,4" />
-                <Button Text="Swap Day" Clicked="OnSwapDayClicked" Style="{StaticResource SecondaryButton}" FontSize="10" Padding="10,4" />
-                <Button Text="Schedule" Clicked="OnEditScheduleClicked" Style="{StaticResource SecondaryButton}" FontSize="10" Padding="10,4" />
-            </HorizontalStackLayout>
 
-            <CollectionView ItemsSource="{Binding Exercises}">
+            <CollectionView ItemsSource="{Binding Sections}" IsGrouped="True">
                 <CollectionView.EmptyView>
                     <Label Text="Rest day — nothing scheduled." Style="{StaticResource MutedLabel}" HorizontalOptions="Center" Margin="0,20" />
                 </CollectionView.EmptyView>
+                <CollectionView.GroupHeaderTemplate>
+                    <DataTemplate>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" Margin="0,12,0,4">
+                            <BoxView WidthRequest="4" HeightRequest="18" Color="{Binding HeaderColor}" VerticalOptions="Center" />
+                            <Label Grid.Column="1" Text="{Binding WorkoutName}" FontAttributes="Bold" FontSize="14" VerticalOptions="Center" />
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.GroupHeaderTemplate>
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
                         <Border Style="{StaticResource CardBorder}" Padding="0">
                           <VerticalStackLayout Spacing="0">
-                            <BoxView HeightRequest="12" Color="{Binding DayTypeColor}" />
+                            <BoxView HeightRequest="12" Color="{Binding CardTopColor}" />
                             <VerticalStackLayout Spacing="6" Padding="16">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <Grid.GestureRecognizers>
@@ -109,7 +121,13 @@
                                         <Label Text="{Binding ExerciseName}" FontAttributes="Bold" FontSize="15" />
                                         <Label Text="{Binding TargetsDisplay}" Style="{StaticResource AccentLabel}" FontSize="12" />
                                         <Label Text="{Binding PreviousPerformance}" Style="{StaticResource MutedLabel}" FontSize="11" />
-                                        <Label Text="{Binding LoggedTodayText}" TextColor="{StaticResource Success}" FontSize="11" IsVisible="{Binding LoggedToday}" />
+                                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding TodaysSets}" IsVisible="{Binding LoggedToday}" Spacing="1" Margin="0,2,0,0">
+                                            <BindableLayout.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Label Text="{Binding DisplayText}" TextColor="{StaticResource Success}" FontSize="11" />
+                                                </DataTemplate>
+                                            </BindableLayout.ItemTemplate>
+                                        </VerticalStackLayout>
                                     </VerticalStackLayout>
                                     <Button Grid.Column="1"
                                             Text="{Binding CompleteButtonText}"
@@ -126,10 +144,15 @@
                                     </Button>
                                 </Grid>
 
-                                <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="8">
+                                <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="8" IsVisible="{Binding ShowEntry}">
                                     <Entry Placeholder="Reps" Text="{Binding CurrentReps}" Keyboard="Numeric" HorizontalTextAlignment="Center" />
                                     <Entry Grid.Column="1" Placeholder="Weight (kg)" Text="{Binding CurrentWeight}" Keyboard="Numeric" HorizontalTextAlignment="Center" />
                                     <Button Grid.Column="2" Text="Log" Clicked="OnLogSetClicked" CommandParameter="{Binding .}" Padding="12,0" />
+                                </Grid>
+
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding IsCompleted}">
+                                    <Label Text="{Binding LastReps}" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+                                    <Label Grid.Column="1" Text="{Binding LastWeight}" FontAttributes="Bold" HorizontalTextAlignment="Center" />
                                 </Grid>
                             </VerticalStackLayout>
                           </VerticalStackLayout>

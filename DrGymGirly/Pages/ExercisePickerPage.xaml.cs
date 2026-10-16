@@ -23,7 +23,7 @@ public partial class ExercisePickerPage : ContentPage
     // convention - returns the chosen exercise, or null if cancelled/dismissed.
     // Defaults to exercises relevant to dayType (DayTypeCategories) with a
     // "Show All"/"Just This Day" toggle as the escape hatch to the full
-    // library, same intent as EditDayTypeExercisesPage's old action-sheet flow.
+    // library, same intent as EditWorkoutExercisesPage's old action-sheet flow.
     public async Task<Exercise?> SelectExerciseAsync(INavigation callerNavigation, List<Exercise> allExercises, DayType dayType)
     {
         _allExercises = allExercises;
@@ -39,7 +39,7 @@ public partial class ExercisePickerPage : ContentPage
         ApplyFilter(string.Empty);
 
         // Pushed as its own modal NavigationPage rather than onto the
-        // caller's stack directly: EditDayTypeExercisesPage was itself
+        // caller's stack directly: EditWorkoutExercisesPage was itself
         // reached via Shell.GoToAsync, so its Navigation is Shell's own
         // route-tracked stack - popping a plain PushAsync page back off that
         // stack makes Shell try to resync its current route internally,
@@ -50,7 +50,7 @@ public partial class ExercisePickerPage : ContentPage
         await callerNavigation.PushModalAsync(new NavigationPage(this));
         var result = await _completion.Task;
 
-        // EditDayTypeExercisesPage immediately opens DisplayPromptAsync after
+        // EditWorkoutExercisesPage immediately opens DisplayPromptAsync after
         // this returns - same race FoodSearchPage.SelectFoodAsync documents:
         // the next native dialog can render before this page's pop has
         // actually finished tearing down, leaving its buttons unresponsive
@@ -79,12 +79,12 @@ public partial class ExercisePickerPage : ContentPage
     {
         var hiddenCount = _allExercises.Count - _relevantExercises.Count;
 
-        ShowAllButton.Text = _showingAll ? "Just This Day" : "Show All";
+        ShowAllButton.Text = _showingAll ? "Just This Workout" : "Show All";
         ShowAllButton.IsVisible = hiddenCount > 0;
 
         FilterHint = _showingAll || hiddenCount == 0
             ? $"Showing all {_allExercises.Count} exercises"
-            : $"Showing exercises for this day type ({hiddenCount} more hidden)";
+            : $"Showing exercises for this workout's category ({hiddenCount} more hidden)";
         OnPropertyChanged(nameof(FilterHint));
     }
 
